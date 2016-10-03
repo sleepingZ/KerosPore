@@ -1,0 +1,26 @@
+units real
+atom_style atomic
+boundary f f f
+region SPHERE sphere 0.0 0.0 0.0 $radius$ side in
+region SPHERE_L sphere 0.0 0.0 0.0 $radius_L$ side in
+create_box 7 SPHERE_L
+create_atoms 7 random 20 362864 SPHERE
+mass * 16.0
+pair_style lj/cut 10.0
+pair_coeff * * 0.29386 3.723#CH4
+neighbor 0.3 bin
+fix WALL all wall/region SPHERE_L lj93 1.9 1.0 2.5#E_w=1.9kcal/mol
+fix GCMC all gcmc 1 10 0 7 8521458 $T$ -5.0 0.5 region SPHERE
+variable N_TEST equal count(all,SPHERE_L)
+compute pe_atom all pe/atom
+compute pe_TEST all reduce sum c_pe_atom
+fix N_TEST_A all ave/time 2 100 200 v_N_TEST
+thermo_style custom etotal c_pe_TEST f_N_TEST_A
+timestep 0.01
+run 5000
+thermo_modify line multi format float %14.6f
+dump 1 all custom 200000 cutter_atoms.lammpstrj id type x y z
+thermo 5000
+timestep 0.5
+fix MOVE all nvt temp $T$ $T$ 100.0
+run 195000

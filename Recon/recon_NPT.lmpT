@@ -1,0 +1,39 @@
+units real
+atom_style full
+boundary p p p
+special_bonds dreiding
+pair_style lj/cut  10.0
+bond_style harmonic  
+angle_style harmonic  
+dihedral_style harmonic
+improper_style none 
+read_data $data$
+pair_coeff 1 1 0.0950 3.88  
+pair_coeff 2 2 0.0950 3.88  
+pair_coeff 3 3 0.0100 3.20  
+pair_coeff 4 4 0.1450 3.695
+pair_coeff 5 5 0.2150 3.51
+pair_coeff 6 6 0.2150 4.14
+pair_coeff 7 7 0.29386 3.72
+pair_modify mix geometric
+neighbor 5.0 multi
+neigh_modify every 2 delay 4 check yes one 5000
+velocity all create 10 87287 loop geom
+compute 1 all pressure thermo_temp
+fix 1 all nve
+fix 2 all temp/rescale 1 100.0 100.0 1.0 1.0
+fix pressureA all ave/time 2 1000 2000 c_1
+thermo_style custom etotal ke temp pe ebond eangle edihed evdwl f_pressureA vol
+timestep 0.001
+thermo_modify line multi format float %14.6f
+dump 1 all custom 10000 recon.lammpstrj id type x y z
+restart 500000 pore.restart
+thermo 2000
+run 10000
+unfix 1
+unfix 2
+fix 3 all npt temp $T$ $T$ 10.0 aniso $P$ $P$ 1000.0
+timestep 0.1
+run 10000
+timestep 0.4
+run 480000
