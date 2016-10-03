@@ -1,0 +1,20 @@
+units real
+atom_style atomic
+boundary s s s
+lattice sc 0.1
+region BOX block -10 10 -10 10 -10 10
+create_box 2 BOX
+read_dump test_dump.lammpstrj 500000 x y z box no add yes
+create_atoms 2 box
+mass 1 1.0
+mass 2 1.0
+pair_style lj/cut 3.0
+pair_coeff * * 1.0 1.0
+group TEST type 2
+group SAMPLE type 1
+fix 1 all setforce NULL NULL NULL
+neighbor 1.0 bin
+neigh_modify every 1 delay 5 check yes one 20000 page 200000 exclude group TEST TEST exclude group SAMPLE SAMPLE
+compute DENSITY TEST coord/atom 2.0 1
+dump 1 TEST custom 1 dump.coordnum id x y z c_DENSITY
+run 0 pre yes post yes

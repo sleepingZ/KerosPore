@@ -1,0 +1,30 @@
+units real
+atom_style atomic
+boundary f f f
+region SPHERE sphere 0.0 0.0 0.0 $voidRadius$ side in
+region SPHERE_L sphere 0.0 0.0 0.0 $poreRadius$ side in
+create_box 1 SPHERE_L
+#create_atoms 1 single 0 0 0
+create_atoms 1 random $nAtoms$ 362864 SPHERE
+mass 1 16.0
+pair_style lj/cut 10.0
+pair_coeff 1 1 0.29386 3.723
+neighbor 0.3 bin
+delete_atoms overlap 1.0 all all
+fix WALL all wall/region SPHERE_L lj93 $energy$ $sigma$ 9.25
+fix GCMC all gcmc 1 0 10 1 8521458 300.0 -6.0 0.5 region SPHERE
+variable N_TEST equal count(all,SPHERE_L)
+compute pe_atom all pe/atom
+compute pe_TEST all reduce sum c_pe_atom
+fix N_TEST_A all ave/time 2 100 200 v_N_TEST
+thermo_style custom etotal c_pe_TEST f_N_TEST_A
+timestep 0.001
+thermo_modify line multi format float %14.6f
+#dump 1 all custom 50000 dump.atom_insphere id type x y z
+thermo 2000
+timestep 0.5
+run 5000
+fix MOVE all nvt temp 300.0 300.0 100.0
+dump 1 all custom 2000 dump.ensembles id type x y z
+unfix GCMC
+run 400000
