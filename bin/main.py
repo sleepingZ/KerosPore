@@ -9,7 +9,9 @@ import sys
 class Main:
     def __init__(self):
         self.configure()
-    
+        cmd = raw_input()
+        self.command(cmd)
+
     def configure(self):
         self.config = {}
         f = open('config','r')
@@ -30,3 +32,15 @@ class Main:
         except:
             pass
         os.chdir(path)
+        
+    def command(self,cmd):
+        cmd_seq = cmd.split()
+        cmd_name = cmd_seq[0]
+        proj_name =cmd_seq[1]
+        args = cmd_seq[2:]
+        exec('from modules import %s'%cmd_name)
+        exec('%s(self,"%s",%s)'%(cmd_name,proj_name,','.join(args)))
+
+if __name__=='__main__':
+    print 'KerosPore beta:'
+    m = Main()

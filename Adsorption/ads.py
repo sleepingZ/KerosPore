@@ -10,7 +10,8 @@ ads_default = {'fluid':'methane','atomMass':16.0,\
     'data':'data.dreiding',\
     'poreThickness':4.0,\
     'atomEpsilon':0.29386,'atomSigma':3.723,\
-    'ensembleFrame':1,'stepRun':30000}#pressure unit: MPa
+    'ensembleFrame':1,'stepRun':10000,\
+    'N_exchange':10,'N_move':10}#pressure unit: MPa
 
 fluid_info = {'methane':{'molMass':16.0,'atomEpsilon':0.29386,'atomSigma':3.723}}
 from ctypes import *

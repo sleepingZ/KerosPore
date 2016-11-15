@@ -1,0 +1,169 @@
+# -*- coding: utf-8 -*-
+"""
+Created on Sun Nov 13 19:03:19 2016
+1.NPT_cutter_sphere:
+    Initial atom coordinates for NPT_cutter procedure.
+2.Saturation:
+    Saturation by LJ atoms
+3.Ads_lj:
+    Single adsorption simulation case, with LJ potential
+4.Isothermal:
+    A series of adsorption simulations with a specific method at various pressures
+@author: sleepingz
+"""
+import sys
+def NPT_cutter_sphere(m,proj_name,D,T,P):
+    '''
+        D (nm): void diameter
+        T (K): temperature, P (bar): pressure    
+    '''
+    sys.path.append(m.config['keros_path'])
+    sys.path.append(m.config['recon_script_path'])
+    m.Project(proj_name)
+    nm2cm = 1e-7
+    void = [D*nm2cm]*3
+    void_v = 1./6*3.1416*(D*nm2cm)**3
+    import update_db
+    k = update_db.KeroCreate()
+    import pack_mol
+    N_mol_all, N_mol_net = pack_mol.Mol_Num_Estimate(m.config,\
+            void, void_v,k.table)
+    c = pack_mol.CubicPack(m.config, N_mol_all, N_mol_net, k.table)
+    c.CubicPack()
+    cell_min = pack_mol.np.min(c.cell)
+    void_D = pack_mol.np.max(void)/1e-8# cm to A
+    void_cell_req = int(void_D/cell_min) + 1
+    nearest = pack_mol.NearestN(c.cube_length,void_cell_req)
+    void_order = int((nearest + 1)/2)
+    import logging
+    logging.basicConfig(level = logging.DEBUG,filename = 'pack.log',\
+	    filemode = 'w')
+    console = logging.StreamHandler()
+    console.setLevel(logging.INFO)
+    logging.getLogger('').addHandler(console)
+    logging.info("Void making parameters:")
+    logging.info("Void_radius: %.2f A, void_volume: %s cm^3"\
+            %(void_D/2.0, format(void_v,'.2e')))
+    logging.info("Required molecule number:")
+    logging.info("all: %d, net: %d, adopted cube length: %d"\
+            %(N_mol_all, N_mol_net, c.cube_length))
+    logging.info("Suggested void order: %d"%void_order)
+    logging.info("Sure to init the void?(y/n)")
+    sure = raw_input()
+    if sure == 'y':
+        c.MakeVoid(void_order = void_order)
+        c.VoidRadius()
+        logging.info("Agree")
+        logging.info("Final void radius:%.2f (A)"%c.void_radius)
+        c.WriteData()
+        datafile =  'data.%dmol.dreiding'%c.cube_length**3
+        id_max = c.id_max
+        import Recon
+        recon = Recon.Recon_NPT_cutter(datafile,m.config,\
+            void_D/2.0,void_D/2.0+1.0,T=T,P=P)
+        recon.script_mod()
+        recon.cutter_id_mod(id_max)
+    else:
+	logging.info("Deny")
+    return '', 0    
+
+def Saturation(m,proj_name,datafile,stepRun=40000):
+    """
+        datafile: datafile for the structure to be saturated
+        stepRun: simulation # of steps for the saturation
+    """
+    sys.path.append(m.config['ads_script_path'])
+    import ads_pre
+    import copy
+    m.Project(proj_name)
+    step = ads_pre.FinalStep('recon.lammpstrj')
+    sat_dict = copy.deepcopy(ads_pre.sat_default)
+    sat_dict['dump'] = 'recon.lammpstrj'
+    sat_dict['data'] = datafile
+    sat_dict['stepRun'] = stepRun
+    sat_dict['step'] = step
+    sat = ads_pre.ads_saturation(m.config,sat_dict)
+    
+def Ads_lj(m,proj_name,datafile,fluid,void_radius,T,P,ensemble_frame,\
+    exchange_id = 8):
+    '''
+        Must be invoked after Saturation.
+        datafile: datafile for the structure
+        fluid: fluid name as 'methane'
+        void_radius(A): pore void space radius
+        T (K): temperature, P (MPa): pressure
+        ensemble_frame: # of snapshots saved to the dump file
+        exchange_id: (id of the MC exchange atoms) = (# of types in the datafile) +1
+    '''
+    sys.path.append(m.config['ads_script_path'])
+    import ads,ads_pre
+    import copy,os
+    m.Project(proj_name)
+    convert = ads.P2mu(m.config)
+    fluid_info = ads.fluid_info[fluid]
+    f_mass = fluid_info['molMass']
+    f_lj_e = fluid_info['atomEpsilon']
+    f_lj_sig = fluid_info['atomSigma']
+    mu = convert.conv(fluid,f_mass,T,P)
+    
+    ads_dict = copy.deepcopy(ads.ads_default)
+    ads_pre.PoreRefine("ads_pre.lammpstrj",void_radius,\
+        poreThickness = ads_dict['poreThickness'])
+    step = ads_pre.FinalStep('refine_ads_pre.lammpstrj')
+    ads_dict['fluid'] = fluid
+    ads_dict['dump'] = 'refine_ads_pre.lammpstrj'
+    ads_dict['data'] = datafile
+    ads_dict['step'] = step
+    ads_dict['molMass'] = f_mass
+    ads_dict['atomEpsilon'] = f_lj_e
+    ads_dict['atomSigma'] = f_lj_sig
+    ads_dict['T'] = T
+    ads_dict['mu'] = mu
+    ads_dict['ensembleFrame'] = ensemble_frame
+    ads_dict['poreRadius'] = void_radius + ads_dict['poreThickness']
+    ads_dict['dumpEvery'] = ads_dict['stepRun']/ads_dict['ensembleFrame']
+    
+    N_est = 4./3*3.1416*void_radius**3
+    vol_mol = f_lj_sig**3
+    N_max = int(N_est/vol_mol)
+    PL = 5.0#This is a estimated value for PL
+    Ne = int(N_max*P/(PL+P))
+    ads_dict['N_exchange'] = max(Ne,20)#fix_gcmc exchanges at least 20 atoms in a step 
+    ads_dict['N_move'] = ads_dict['N_exchange']
+    
+    import datafile_mod
+    datafile_mod.addAtomType(datafile,exchange_id-1,exchange_id)
+    ads_dict['data'] = 'data.dreiding'#new datafile generated by addAtomType
+    ads_lj = ads.ads_lj(m.config,ads_dict)
+    
+    method = 'lj'
+    dump = 'ads_pre.lammpstrj'
+    path = 'iso:%s_T_%.2f_P_%.2f'%(method,T,P)
+    try:
+        os.mkdir(path)
+    except:
+        pass
+    os.system('cp -rf ff_%s refine_%s ads_%s.lmp data.dreiding %s'%\
+                (dump,dump,method,path))
+    os.system('rm -f ff_%s refine_%s ads_%s.lmp data.dreiding'%\
+                (dump,dump,method))
+
+def Isotherm(m,proj_name,datafile,method,fluid,void_radius,\
+    T,ensemble_frame=500,exchange_id = 8,Pmin=0.5,Pmax=30.0,num=10):
+    '''
+        Must be invoked after Saturation.
+        datafile: datafile for the structure
+        method: lj or mol
+        fluid: fluid name as 'methane'
+        void_radius(A): pore void space radius
+        T (K): temperature
+        ensemble_frame: # of snapshots saved to the dump file
+        exchange_id: (id of the MC exchange atoms) = (# of types in the datafile) +1
+        Pmin, Pmax and num decide the pressure values in the isotherm
+    '''
+    import numpy as np
+    P_seq = np.linspace(Pmin,Pmax,num=num,endpoint=True)
+    for P in P_seq:
+        if method == 'lj':
+            Ads_lj(m,proj_name,datafile,fluid,void_radius,T,P,ensemble_frame,\
+                exchange_id = exchange_id)
