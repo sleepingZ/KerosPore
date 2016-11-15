@@ -30,7 +30,7 @@ region          IEXCHANGE sphere 0.0 0.0 0.0 $poreRadius$ side out
 region          DEXCHANGE intersect 2 BLOCK IEXCHANGE
 group           FLUID type 8
 group           SOLID subtract all FLUID
-fix             GCMC FLUID gcmc 1 10 10 8 8521458 $T$ $mu$ 0.5 region EXCHANGE
+fix             GCMC FLUID gcmc 1 $N_exchange$ $N_move$ 8 8521458 $T$ $mu$ 0.5 region EXCHANGE
 fix             IGCMC FLUID gcmc 1 5 0 8 8521458 300.0 -15.0 0.5 region DEXCHANGE
 variable        N_FLUID equal count(FLUID)
 compute         pe_atom FLUID pe/atom
