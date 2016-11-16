@@ -26,7 +26,7 @@ class Density():
         self.path = path
         self.config = config
         self.adsfile = '../'+adsfile
-        self.engine = 'mpirun -np 4 lmp_ubuntu<'
+        self.engine = config['engine']+'<'
         self.dumpfile = 'ensembles.lammpstrj'
         self.coordnum = 'dump.coordnum'
     
@@ -40,7 +40,11 @@ class Density():
         if self.mode == 'new':
             os.chdir('..')
             out_folder = 'VRho:%s'%(self.path)
-            os.system('mv  densityTemp %s'%out_folder)
+            try:
+                os.system('mv densityTemp %s'%out_folder)
+            except:
+                print "%s already exists, the results are in %s(NEW)"%(out_folder,out_folder)
+                os.system('mv densityTemp %s'%(out_folder+'(NEW)'))
         else:
             os.chdir('..')
     

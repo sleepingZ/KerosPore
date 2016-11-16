@@ -126,7 +126,7 @@ def Ads_lj(m,proj_name,datafile,fluid,void_radius,T,P,ensemble_frame,\
     N_est = 4./3*3.1416*void_radius**3
     vol_mol = f_lj_sig**3
     N_max = int(N_est/vol_mol)
-    PL = 5.0#This is a estimated value for PL
+    PL = 5.0#!!!This is a estimated value for PL
     Ne = int(N_max*P/(PL+P))
     ads_dict['N_exchange'] = max(Ne,20)#fix_gcmc exchanges at least 20 atoms in a step 
     ads_dict['N_move'] = ads_dict['N_exchange']
@@ -167,3 +167,35 @@ def Isotherm(m,proj_name,datafile,method,fluid,void_radius,\
         if method == 'lj':
             Ads_lj(m,proj_name,datafile,fluid,void_radius,T,P,ensemble_frame,\
                 exchange_id = exchange_id)
+                
+def DensityAccum(m,proj_name,accum_name,adsfile,ensemble_frame,equil_step,\
+    void_radius,cutoff = 2.0,mesh = 50,exchange_id = 8,mode = 'full'):
+    '''
+        Must be invoked after Isotherm/Ads_lj.
+        accum_name: folder name of the current DensityAccum
+        adsfile: filename of the .lammpstrj file to be Accum
+        ensemble_frame: # of snapshots saved to the dump file
+        void_radius(A): pore void space radius
+        mesh: # of mesh of the half_length, half_length = void_radius + 4.0 by default
+        cutoff: space averaging cutoff radius of the coordnum
+        equil_step: when step>equil_step the GCMC procedure is in equilibruim
+        exchange_id: (id of the MC exchange atoms) = (# of types in the datafile) +1
+        mode:
+        --full: DensityAccum and Coordnum
+        --partial: Coordnum only
+    '''
+    sys.path.append(m.config['ads_script_path'])
+    m.Project(proj_name)
+    import ensembleDensity as eD
+    
+    half_length = void_radius + 4.0
+    mesh = max(50,int(half_length/cutoff))
+    
+    D = eD.Density(m.config,path = accum_name,adsfile = adsfile)
+    if mode == 'full':
+        D.densityAccum(atomID = exchange_id, frame = ensemble_frame, equil = equil_step)
+    
+    D.coordNum(half_length, mesh, cutoff)
+    D.finalize()
+        
+    
