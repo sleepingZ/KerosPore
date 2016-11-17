@@ -198,4 +198,16 @@ def DensityAccum(m,proj_name,accum_name,adsfile,ensemble_frame,equil_step,\
     D.coordNum(half_length, mesh, cutoff)
     D.finalize()
         
+def IsothermAnalyze(m,proj_name,group_name,fluid,equil_step):
+    """
+        Must be called after Isotherm/Ads_lj AND LAMMPS runs
+        group_name: name for the current isotherms
+        fluid: fluid name
+        equil_step: when step>equil_step the GCMC procedure is in equilibruim
+    """
+    sys.path.append(m.config['ads_script_path'])
+    m.Project(proj_name)
+    import ads_post
+    ads_post.adsGroup('.',group_name)
+    ads_post.writeAdsFile(m.config,fluid,'.',equil_step = equil_step)
     
