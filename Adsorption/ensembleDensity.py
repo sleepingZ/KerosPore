@@ -152,29 +152,28 @@ class Density():
         frame = self.frame
         d_mesh = mesh
         d_max = frame
-        #d_max = np.max(hist_list)
         d_range = np.linspace(0,d_max,d_mesh)
         hist = np.histogram(hist_list,d_range)
         self.data_x = hist[1][:-1]
         self.data_hist = hist[0]
 
-    def V_rho_Spectrum(self,xlim):
+    def V_rho_Spectrum(self):
         import matplotlib.pyplot as plt
         mesh_all = (2.0*self.mesh)**3
         self.data_hist = np.divide(self.data_hist,mesh_all)
         plt.rc('font', family='serif')
         plt.rc('legend',numpoints=1)
-        plt.figure(figsize=(5,6))
-        ax = []
-        ax.append(plt.subplot(211))
-        ax[0].set_position([0.2,0.6,0.7,0.38])
-        ax.append(plt.subplot(212))
-        ax[1].set_position([0.2,0.1,0.7,0.38])
-        ax[1].plot(np.divide(self.data_x,self.frame),self.data_hist,'ko-',label="Kerogen Pore")
+        plt.figure(figsize=(5,3))
+        ax = plt.subplot(111)
+	ax.set_position([0.2,0.2,0.75,0.75])
+	Rho = np.divide(self.data_x,self.frame)
+	V = self.data_hist
+	RhoV = np.multiply(V,Rho)
+	ax.plot(Rho,V,'ko-',label = r'$V(\rho_E)$')
+	ax.plot(Rho,RhoV,'bs-',label = r'$M(\rho_E)$')
         plt.legend()
         plt.xlabel(r'$\rho_E$',fontsize=20)
-        plt.ylabel(r'$V_F$',fontsize=20)
-        plt.xlim(xmax=xlim)
+        plt.ylabel(r'amplitude',fontsize=20)
         plt.show()
     
     def V_rho_SpectrumComparison(self,compData,refs,xlim=0.7):

@@ -210,4 +210,19 @@ def IsothermAnalyze(m,proj_name,group_name,fluid,equil_step):
     import ads_post
     ads_post.adsGroup('.',group_name)
     ads_post.writeAdsFile(m.config,fluid,'.',equil_step = equil_step)
+
+def VisualDensity(m,proj_name,case,phi=0.01):
+    sys.path.append(m.config['ads_script_path'])
+    m.Project(proj_name)
+    import ensembleDensity as eD
+    D = eD.Density(m.config,path=case,mode='open')
+    D.visualDensity(vis='yes',phi=phi)
     
+def VRhoSpectrum(m,proj_name,case,hist_mesh=100):
+    sys.path.append(m.config['ads_script_path'])
+    m.Project(proj_name)
+    import ensembleDensity as eD
+    D = eD.Density(m.config,path=case,mode='open')
+    D.readCoordfile()
+    D.evalHist(mesh=hist_mesh)
+    D.V_rho_Spectrum()    
