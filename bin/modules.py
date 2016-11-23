@@ -12,6 +12,8 @@ Created on Sun Nov 13 19:03:19 2016
 @author: sleepingz
 """
 import sys
+import numpy as np
+import matplotlib.pyplot as plt
 def NPT_cutter_sphere(m,proj_name,D,T,P):
     '''
         D (nm): void diameter
@@ -225,4 +227,57 @@ def VRhoSpectrum(m,proj_name,case,hist_mesh=100):
     D = eD.Density(m.config,path=case,mode='open')
     D.readCoordfile()
     D.evalHist(mesh=hist_mesh)
-    D.V_rho_Spectrum()    
+    D.V_rho_Spectrum()
+
+def Density1DRadial(m,proj_name,case,void_radius,mesh=100):
+    sys.path.append(m.config['ads_script_path'])
+    m.Project(proj_name)
+    import ensembleDensity as eD
+    D = eD.Density(m.config,path=case,mode='open')
+    D.density1D_radial(void_radius,mesh=mesh)
+    print np.divide(D.radial_hist[1:],np.square(D.radial_r[1:]))
+        
+def Ads_lj93Wall(m,proj_name,void_radius,nAtoms,fluid,T,energy=1.9,sigma=3.7):
+    sys.path.append(m.config['ads_script_path'])
+    m.Project(proj_name)
+    import ads
+    fluid_info = ads.fluid_info[fluid]
+    f_mass = fluid_info['molMass']
+    f_lj_e = fluid_info['atomEpsilon']
+    f_lj_sig = fluid_info['atomSigma']
+    lj93_dict = {'voidRadius':void_radius,\
+            'poreRadius':void_radius + sigma,\
+            'energy':energy,'nAtoms':nAtoms,'sigma':sigma,\
+            'atomEpsilon':f_lj_e,'atomSigma':f_lj_sig,\
+            'T':T,'atomMass':f_mass}
+    lj93Wall = ads.ads_lj93Wall(m.config,lj93_dict)
+    lj93Wall()
+
+def AdsRhoFree(m,proj_name,void_radius,ads_group,fluid,T,energy=1.9,sigma=3.7,\
+    hist_mesh = 100):
+    sys.path.append(m.config['ads_script_path'])
+    m.Project(proj_name)
+    import ads_post
+    import ensembleDensity as eD
+    ads_res_file = '%s/adsorption.data'%ads_group
+    res = ads_post.readAdsFile(ads_res_file)
+    nAtoms_seq = [int(r['N'][0]) for r in res]
+    p_seq = [r['p'] for r in res]
+    num = len(nAtoms_seq)
+    new_proj_name = '%s/%s/adsRatio'%(proj_name,ads_group)
+    m.Project(new_proj_name)
+    f = open('rho_free.data','w')
+    for i in range(num):
+        Ads_lj93Wall(m,new_proj_name,void_radius,nAtoms_seq[i],\
+                fluid,T,energy=energy,sigma=sigma)
+        accum_name = 'accum_%.2fMPa'%p_seq[i]
+        DensityAccum(m,new_proj_name,accum_name,"dump.ensembles",\
+            100,200000,void_radius,exchange_id = 1)
+        #curdir = new_proj
+        D = eD.Density(m.config,path='VRho:%s'%(accum_name),\
+            mode='open')
+        D.readCoordfile()
+        D.evalHist(mesh=hist_mesh)
+        D.V_rho_Spectrum(plot='no')
+        f.write('%8.2f,%8.4f\n'%(p_seq[i],D.RhoFree))   
+    f.close()
