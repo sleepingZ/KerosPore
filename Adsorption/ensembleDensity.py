@@ -156,8 +156,8 @@ class Density():
         hist = np.histogram(hist_list,d_range)
         self.data_x = hist[1][:-1]
         self.data_hist = hist[0]
-
-    def V_rho_Spectrum(self):
+        
+    def V_rho_Spectrum(self,plot='yes'):
         import matplotlib.pyplot as plt
         mesh_all = (2.0*self.mesh)**3
         self.data_hist = np.divide(self.data_hist,mesh_all)
@@ -165,16 +165,29 @@ class Density():
         plt.rc('legend',numpoints=1)
         plt.figure(figsize=(5,3))
         ax = plt.subplot(111)
-	ax.set_position([0.2,0.2,0.75,0.75])
-	Rho = np.divide(self.data_x,self.frame)
-	V = self.data_hist
-	RhoV = np.multiply(V,Rho)
-	ax.plot(Rho,V,'ko-',label = r'$V(\rho_E)$')
-	ax.plot(Rho,RhoV,'bs-',label = r'$M(\rho_E)$')
+        ax.set_position([0.2,0.2,0.75,0.75])
+        Rho = np.divide(self.data_x,self.frame)
+        V = self.data_hist
+        RhoV = np.multiply(V,Rho)
+        
+        rho_free_candi = []
+        for i in range(1,len(Rho)-1):
+            if RhoV[i-1]<RhoV[i] and RhoV[i]>RhoV[i+1]:#include peak points
+                dRhoV = min(RhoV[i]-RhoV[i-1],RhoV[i]-RhoV[i+1])
+                if dRhoV/RhoV[i]<0.1:#exclude spur points
+                    rho_free_candi.append(Rho[i])
+        self.RhoFree = rho_free_candi[0]
+        self.Rho = Rho
+        self.V = V
+        self.RhoV = RhoV
+        ax.plot(Rho,V,'ko-',label = r'$V(\rho_E)$')
+        ax.plot(Rho,RhoV,'bs-',label = r'$M(\rho_E)$')
         plt.legend()
         plt.xlabel(r'$\rho_E$',fontsize=20)
         plt.ylabel(r'amplitude',fontsize=20)
-        plt.show()
+        if plot == 'yes':
+            plt.show()
+            
     
     def V_rho_SpectrumComparison(self,compData,refs,xlim=0.7):
         
