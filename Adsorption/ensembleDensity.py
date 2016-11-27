@@ -31,13 +31,13 @@ class Density():
         self.coordnum = 'dump.coordnum'
     
     def finalize(self):#Must be called when a new Density class is about to construct
-        f = open('V_Rho.info','w')
-        f.write('frame:%d\n'%self.frame)
-        f.write('mesh:%d\n'%self.mesh)
-        f.write('R_ave:%.2f\n'%self.R_ave)
-        f.write('halflength:%.2f\n'%self.halflength)
-        f.close()        
         if self.mode == 'new':
+            f = open('V_Rho.info','w')
+            f.write('frame:%d\n'%self.frame)
+            f.write('mesh:%d\n'%self.mesh)
+            f.write('R_ave:%.2f\n'%self.R_ave)
+            f.write('halflength:%.2f\n'%self.halflength)
+            f.close()        
             os.chdir('..')
             out_folder = 'VRho:%s'%(self.path)
             try:
@@ -187,7 +187,23 @@ class Density():
         plt.ylabel(r'amplitude',fontsize=20)
         if plot == 'yes':
             plt.show()
+    
+    def adsAnalysis(self,mode = 'self',rhoFreeRef = 0.0,\
+            bonus=0.2):
+        if mode == 'self':
+            RhoFree=self.RhoFree*(1.+bonus)
+        else:
+            RhoFree=rhoFreeRef*(1.+bonus)
             
+        RhoV_sum = np.sum(self.RhoV)
+        V_sum = np.sum(self.V)
+        num = len(self.Rho)
+        Rho = self.Rho
+        RhoV_ads = np.sum([self.RhoV[i] for i in range(num) if Rho[i]>RhoFree])
+        V_ads = np.sum([self.V[i] for i in range(num) if Rho[i]>RhoFree])
+        self.RhoV_ads = RhoV_ads/RhoV_sum
+        self.V_ads = V_ads/V_sum
+        
     
     def V_rho_SpectrumComparison(self,compData,refs,xlim=0.7):
         
