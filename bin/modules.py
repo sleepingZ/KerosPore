@@ -291,7 +291,7 @@ def IsothermDensityAccum(m,proj_name,ads_group,ensemble_frame,equil_step,\
     m.Project(proj_name)
     filenames = os.listdir(ads_group)
     for name in filenames:
-        if name.startswith('iso:'):
+        if name.startswith('iso:') or name.startswith('iso%'):
             new_proj_name = '%s/%s/%s'%(proj_name,ads_group,name)
             DensityAccum(m,new_proj_name,"Accum","ads_lj.lammpstrj",\
                 ensemble_frame,equil_step,void_radius,\
@@ -318,7 +318,7 @@ def AdsRatio(m,proj_name,ads_group,mode='self',hist_mesh=100,bonus=0.2):
     
     for name in filenames:
         m.Project(proj_name)
-        if name.startswith('iso:'):
+        if name.startswith('iso:') or name.startswith('iso%'):
             press = name.split('_')[-1]
             D = eD.Density(m.config,path='%s/%s/VRho:Accum'%(ads_group,name),\
                 mode='open')

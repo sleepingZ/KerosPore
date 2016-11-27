@@ -40,7 +40,7 @@ def adsGroup(path,group_name):
 def writeAdsFile(config,fluid,path,equil_step = 10000):
     import os
     dirs = os.listdir(path)
-    iso_dirs = [name for name in dirs if name.startswith('iso:')]
+    iso_dirs = [name for name in dirs if name.startswith('iso:') or name.startswith('iso%')]
     iso_dirs = sorted(iso_dirs,key=lambda x:float(x.split('_')[4]))
     from ads import fluid_info,P2mu
     molMass = fluid_info[fluid]['molMass']
