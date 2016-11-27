@@ -42,5 +42,6 @@ class Main:
 if __name__=='__main__':
     print 'KerosPore beta:'
     m = Main()
-    cmd = raw_input()
-    m.command(cmd)
+    while True:
+        cmd = raw_input()
+        m.command(cmd)
