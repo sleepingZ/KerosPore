@@ -43,5 +43,6 @@ if __name__=='__main__':
     print 'KerosPore beta:'
     m = Main()
     while True:
+        print 'Keros>>>',
         cmd = raw_input()
         m.command(cmd)
