@@ -26,21 +26,25 @@ class Density():
         self.path = path
         self.config = config
         self.adsfile = '../'+adsfile
-        self.engine = 'mpirun -np 4 lmp_ubuntu<'
+        self.engine = config['engine']+'<'
         self.dumpfile = 'ensembles.lammpstrj'
         self.coordnum = 'dump.coordnum'
     
     def finalize(self):#Must be called when a new Density class is about to construct
-        f = open('V_Rho.info','w')
-        f.write('frame:%d\n'%self.frame)
-        f.write('mesh:%d\n'%self.mesh)
-        f.write('R_ave:%.2f\n'%self.R_ave)
-        f.write('halflength:%.2f\n'%self.halflength)
-        f.close()        
         if self.mode == 'new':
+            f = open('V_Rho.info','w')
+            f.write('frame:%d\n'%self.frame)
+            f.write('mesh:%d\n'%self.mesh)
+            f.write('R_ave:%.2f\n'%self.R_ave)
+            f.write('halflength:%.2f\n'%self.halflength)
+            f.close()        
             os.chdir('..')
             out_folder = 'VRho:%s'%(self.path)
-            os.system('mv  densityTemp %s'%out_folder)
+            try:
+                os.system('mv densityTemp %s'%out_folder)
+            except:
+                print "%s already exists, the results are in %s(NEW)"%(out_folder,out_folder)
+                os.system('mv densityTemp %s'%(out_folder+'(NEW)'))
         else:
             os.chdir('..')
     
@@ -148,30 +152,61 @@ class Density():
         frame = self.frame
         d_mesh = mesh
         d_max = frame
-        #d_max = np.max(hist_list)
         d_range = np.linspace(0,d_max,d_mesh)
         hist = np.histogram(hist_list,d_range)
         self.data_x = hist[1][:-1]
         self.data_hist = hist[0]
-
-    def V_rho_Spectrum(self,xlim):
+        
+    def V_rho_Spectrum(self,plot='yes'):
         import matplotlib.pyplot as plt
         mesh_all = (2.0*self.mesh)**3
         self.data_hist = np.divide(self.data_hist,mesh_all)
         plt.rc('font', family='serif')
         plt.rc('legend',numpoints=1)
-        plt.figure(figsize=(5,6))
-        ax = []
-        ax.append(plt.subplot(211))
-        ax[0].set_position([0.2,0.6,0.7,0.38])
-        ax.append(plt.subplot(212))
-        ax[1].set_position([0.2,0.1,0.7,0.38])
-        ax[1].plot(np.divide(self.data_x,self.frame),self.data_hist,'ko-',label="Kerogen Pore")
+        plt.figure(figsize=(5,3))
+        ax = plt.subplot(111)
+        ax.set_position([0.2,0.2,0.75,0.75])
+        Rho = np.divide(self.data_x,self.frame)
+        V = self.data_hist
+        RhoV = np.multiply(V,Rho)
+        
+        rho_free_candi = []
+        for i in range(1,len(Rho)-1):
+            if RhoV[i-1]<RhoV[i] and RhoV[i]>RhoV[i+1]:#include peak points
+                dRhoV = min(RhoV[i]-RhoV[i-1],RhoV[i]-RhoV[i+1])
+                if dRhoV/RhoV[i]<0.1:#exclude spur points
+                    rho_free_candi.append(Rho[i])
+        if len(rho_free_candi)==0:
+            rho_free_candi.append(0.0)
+        self.RhoFree = rho_free_candi[0]
+        self.Rho = Rho
+        self.V = V
+        self.RhoV = RhoV
+        ax.plot(Rho,V,'ko-',label = r'$V(\rho_E)$')
+        ax.plot(Rho,RhoV,'bs-',label = r'$M(\rho_E)$')
         plt.legend()
         plt.xlabel(r'$\rho_E$',fontsize=20)
-        plt.ylabel(r'$V_F$',fontsize=20)
-        plt.xlim(xmax=xlim)
-        plt.show()
+        plt.ylabel(r'amplitude',fontsize=20)
+        if plot == 'yes':
+            plt.show()
+    
+    def adsAnalysis(self,mode = 'self',rhoFreeRef = 0.0,\
+            bonus=0.2):
+        if mode == 'self':
+            RhoFree=self.RhoFree*(1.+bonus)
+        else:
+            self.RhoFree=rhoFreeRef
+            RhoFree=rhoFreeRef*(1.+bonus)
+            
+        RhoV_sum = np.sum(self.RhoV)
+        V_sum = np.sum(self.V)
+        num = len(self.Rho)
+        Rho = self.Rho
+        RhoV_ads = np.sum([self.RhoV[i] for i in range(num) if Rho[i]>RhoFree])
+        V_ads = np.sum([self.V[i] for i in range(num) if Rho[i]>RhoFree])
+        self.RhoV_ads = RhoV_ads/RhoV_sum
+        self.V_ads = V_ads/V_sum
+        
     
     def V_rho_SpectrumComparison(self,compData,refs,xlim=0.7):
         

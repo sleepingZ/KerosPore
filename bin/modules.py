@@ -12,6 +12,8 @@ Created on Sun Nov 13 19:03:19 2016
 @author: sleepingz
 """
 import sys
+import numpy as np
+import matplotlib.pyplot as plt
 def NPT_cutter_sphere(m,proj_name,D,T,P):
     '''
         D (nm): void diameter
@@ -126,7 +128,7 @@ def Ads_lj(m,proj_name,datafile,fluid,void_radius,T,P,ensemble_frame,\
     N_est = 4./3*3.1416*void_radius**3
     vol_mol = f_lj_sig**3
     N_max = int(N_est/vol_mol)
-    PL = 5.0#This is a estimated value for PL
+    PL = 5.0#!!!This is a estimated value for PL
     Ne = int(N_max*P/(PL+P))
     ads_dict['N_exchange'] = max(Ne,20)#fix_gcmc exchanges at least 20 atoms in a step 
     ads_dict['N_move'] = ads_dict['N_exchange']
@@ -148,7 +150,7 @@ def Ads_lj(m,proj_name,datafile,fluid,void_radius,T,P,ensemble_frame,\
     os.system('rm -f ff_%s refine_%s ads_%s.lmp data.dreiding'%\
                 (dump,dump,method))
 
-def Isotherm(m,proj_name,datafile,method,fluid,void_radius,\
+def Isotherm(m,proj_name,group_name,datafile,method,fluid,void_radius,\
     T,ensemble_frame=500,exchange_id = 8,Pmin=0.5,Pmax=30.0,num=10):
     '''
         Must be invoked after Saturation.
@@ -161,9 +163,179 @@ def Isotherm(m,proj_name,datafile,method,fluid,void_radius,\
         exchange_id: (id of the MC exchange atoms) = (# of types in the datafile) +1
         Pmin, Pmax and num decide the pressure values in the isotherm
     '''
+    sys.path.append(m.config['ads_script_path'])
+    import ads_post
     import numpy as np
     P_seq = np.linspace(Pmin,Pmax,num=num,endpoint=True)
     for P in P_seq:
         if method == 'lj':
             Ads_lj(m,proj_name,datafile,fluid,void_radius,T,P,ensemble_frame,\
                 exchange_id = exchange_id)
+    m.Project(proj_name)
+    ads_post.adsGroup('.',group_name)
+
+def DensityAccum(m,proj_name,accum_name,adsfile,ensemble_frame,equil_step,\
+    void_radius,cutoff = 2.0,mesh = 50,exchange_id = 8,mode = 'full'):
+    '''
+        Must be invoked after Isotherm/Ads_lj.
+        accum_name: folder name of the current DensityAccum
+        adsfile: filename of the .lammpstrj file to be Accum
+        ensemble_frame: # of snapshots saved to the dump file
+        void_radius(A): pore void space radius
+        mesh: # of mesh of the half_length, half_length = void_radius + 4.0 by default
+        cutoff: space averaging cutoff radius of the coordnum
+        equil_step: when step>equil_step the GCMC procedure is in equilibruim
+        exchange_id: (id of the MC exchange atoms) = (# of types in the datafile) +1
+        mode:
+        --full: DensityAccum and Coordnum
+        --partial: Coordnum only
+    '''
+    sys.path.append(m.config['ads_script_path'])
+    m.Project(proj_name)
+    import ensembleDensity as eD
+    
+    half_length = void_radius + 4.0
+    mesh = max(50,int(half_length/cutoff))
+    
+    D = eD.Density(m.config,path = accum_name,adsfile = adsfile)
+    if mode == 'full':
+        D.densityAccum(atomID = exchange_id, frame = ensemble_frame, equil = equil_step)
+    
+    D.coordNum(half_length, mesh, cutoff)
+    D.finalize()
+        
+def IsothermAnalyze(m,proj_name,group_name,fluid,equil_step):
+    """
+        Must be called after Isotherm/Ads_lj AND LAMMPS runs
+        group_name: name for the current isotherms
+        fluid: fluid name
+        equil_step: when step>equil_step the GCMC procedure is in equilibruim
+    """
+    sys.path.append(m.config['ads_script_path'])
+    m.Project(proj_name+'/%s'%group_name)
+    import ads_post
+    ads_post.writeAdsFile(m.config,fluid,'.',equil_step = equil_step)
+
+def VisualDensity(m,proj_name,case,phi=0.01):
+    sys.path.append(m.config['ads_script_path'])
+    m.Project(proj_name)
+    import ensembleDensity as eD
+    D = eD.Density(m.config,path=case,mode='open')
+    D.visualDensity(vis='yes',phi=phi)
+    
+def VRhoSpectrum(m,proj_name,case,hist_mesh=100):
+    sys.path.append(m.config['ads_script_path'])
+    m.Project(proj_name)
+    import ensembleDensity as eD
+    D = eD.Density(m.config,path=case,mode='open')
+    D.readCoordfile()
+    D.evalHist(mesh=hist_mesh)
+    D.V_rho_Spectrum()
+
+def Density1DRadial(m,proj_name,case,void_radius,mesh=100):
+    sys.path.append(m.config['ads_script_path'])
+    m.Project(proj_name)
+    import ensembleDensity as eD
+    D = eD.Density(m.config,path=case,mode='open')
+    D.density1D_radial(void_radius,mesh=mesh)
+    print np.divide(D.radial_hist[1:],np.square(D.radial_r[1:]))
+        
+def Ads_lj93Wall(m,proj_name,void_radius,nAtoms,fluid,T,energy=1.9,sigma=3.7):
+    sys.path.append(m.config['ads_script_path'])
+    m.Project(proj_name)
+    import ads
+    fluid_info = ads.fluid_info[fluid]
+    f_mass = fluid_info['molMass']
+    f_lj_e = fluid_info['atomEpsilon']
+    f_lj_sig = fluid_info['atomSigma']
+    lj93_dict = {'voidRadius':void_radius,\
+            'poreRadius':void_radius + sigma,\
+            'energy':energy,'nAtoms':nAtoms,'sigma':sigma,\
+            'atomEpsilon':f_lj_e,'atomSigma':f_lj_sig,\
+            'T':T,'atomMass':f_mass}
+    lj93Wall = ads.ads_lj93Wall(m.config,lj93_dict)
+    lj93Wall()
+
+def AdsRhoFree(m,proj_name,void_radius,ads_group,fluid,T,energy=1.9,sigma=3.7,\
+    hist_mesh = 100):
+    sys.path.append(m.config['ads_script_path'])
+    m.Project(proj_name)
+    import ads_post
+    import ensembleDensity as eD
+    ads_res_file = '%s/adsorption.data'%ads_group
+    res = ads_post.readAdsFile(ads_res_file)
+    nAtoms_seq = [int(r['N'][0]) for r in res]
+    p_seq = [r['p'] for r in res]
+    num = len(nAtoms_seq)
+    new_proj_name = '%s/%s/adsRatio'%(proj_name,ads_group)
+    m.Project(new_proj_name)
+    f = open('rho_free.data','w')
+    for i in range(num):
+        Ads_lj93Wall(m,new_proj_name,void_radius,nAtoms_seq[i],\
+                fluid,T,energy=energy,sigma=sigma)
+        accum_name = 'accum_%.2fMPa'%p_seq[i]
+        DensityAccum(m,new_proj_name,accum_name,"dump.ensembles",\
+            100,200000,void_radius,exchange_id = 1)
+        #curdir = new_proj
+        D = eD.Density(m.config,path='VRho:%s'%(accum_name),\
+            mode='open')
+        D.readCoordfile()
+        D.evalHist(mesh=hist_mesh)
+        D.V_rho_Spectrum(plot='no')
+        f.write('%8.2f,%8.4f\n'%(p_seq[i],D.RhoFree))   
+    f.close()
+    
+def IsothermDensityAccum(m,proj_name,ads_group,ensemble_frame,equil_step,\
+        void_radius,cutoff = 2.0,mesh = 50,exchange_id = 8):
+    import os
+    m.Project(proj_name)
+    filenames = os.listdir(ads_group)
+    for name in filenames:
+        if name.startswith('iso:') or name.startswith('iso%'):
+            new_proj_name = '%s/%s/%s'%(proj_name,ads_group,name)
+            DensityAccum(m,new_proj_name,"Accum","ads_lj.lammpstrj",\
+                ensemble_frame,equil_step,void_radius,\
+                cutoff = cutoff,mesh=mesh,exchange_id=exchange_id,mode='full')
+                
+def AdsRatio(m,proj_name,ads_group,mode='self',hist_mesh=100,bonus=0.2):
+    import os
+    sys.path.append(m.config['ads_script_path'])
+    import ensembleDensity as eD
+    m.Project(proj_name)
+    filenames = os.listdir(ads_group)
+    V_dict,RhoV_dict = {},{}
+    rhoFree_dict = {}
+
+    if mode == 'file':
+        rhoFreefile = '%s/adsRatio/rho_free.data'%(ads_group)
+        f = open(rhoFreefile)
+        lines = f.readlines()
+        for line in lines:
+            p = line.strip().split(',')[0]
+            rF = float(line.strip().split(',')[1])
+            rhoFree_dict[p] = rF
+        f.close()
+    
+    for name in filenames:
+        m.Project(proj_name)
+        if name.startswith('iso:') or name.startswith('iso%'):
+            press = name.split('_')[-1]
+            D = eD.Density(m.config,path='%s/%s/VRho:Accum'%(ads_group,name),\
+                mode='open')
+            D.readCoordfile()
+            D.evalHist(mesh=hist_mesh)
+            D.V_rho_Spectrum(plot='no')
+            if mode == 'file':
+                D.adsAnalysis(mode='file',rhoFreeRef=rhoFree_dict[press],bonus=bonus)
+            else:
+                D.adsAnalysis(mode='self',bonus=bonus)
+                rhoFree_dict[press] = D.RhoFree
+            RhoV_dict[press] = D.RhoV_ads
+            V_dict[press] = D.V_ads
+    m.Project('%s/%s'%(proj_name,ads_group))
+    p_seq = sorted(V_dict.keys(),key=lambda x:float(x))
+    g = open('adsRatio.data','w')
+    g.write('press(MPa), RhoV, V, RhoFree\n')
+    for p in p_seq:
+        g.write('%8.2f,%8.4f,%8.4f,%8.4f\n'%(float(p),RhoV_dict[p],V_dict[p],rhoFree_dict[p]))
+    g.close()

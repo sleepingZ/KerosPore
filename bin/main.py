@@ -9,8 +9,6 @@ import sys
 class Main:
     def __init__(self):
         self.configure()
-        cmd = raw_input()
-        self.command(cmd)
 
     def configure(self):
         self.config = {}
@@ -44,3 +42,7 @@ class Main:
 if __name__=='__main__':
     print 'KerosPore beta:'
     m = Main()
+    while True:
+        print 'Keros>>>',
+        cmd = raw_input()
+        m.command(cmd)
