@@ -176,6 +176,8 @@ class Density():
                 dRhoV = min(RhoV[i]-RhoV[i-1],RhoV[i]-RhoV[i+1])
                 if dRhoV/RhoV[i]<0.1:#exclude spur points
                     rho_free_candi.append(Rho[i])
+        if len(rho_free_candi)==0:
+            rho_free_candi.append(0.0)
         self.RhoFree = rho_free_candi[0]
         self.Rho = Rho
         self.V = V
@@ -193,6 +195,7 @@ class Density():
         if mode == 'self':
             RhoFree=self.RhoFree*(1.+bonus)
         else:
+            self.RhoFree=rhoFreeRef
             RhoFree=rhoFreeRef*(1.+bonus)
             
         RhoV_sum = np.sum(self.RhoV)

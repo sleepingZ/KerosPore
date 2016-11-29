@@ -329,11 +329,13 @@ def AdsRatio(m,proj_name,ads_group,mode='self',hist_mesh=100,bonus=0.2):
                 D.adsAnalysis(mode='file',rhoFreeRef=rhoFree_dict[press],bonus=bonus)
             else:
                 D.adsAnalysis(mode='self',bonus=bonus)
+                rhoFree_dict[press] = D.RhoFree
             RhoV_dict[press] = D.RhoV_ads
             V_dict[press] = D.V_ads
     m.Project('%s/%s'%(proj_name,ads_group))
     p_seq = sorted(V_dict.keys(),key=lambda x:float(x))
     g = open('adsRatio.data','w')
+    g.write('press(MPa), RhoV, V, RhoFree\n')
     for p in p_seq:
-        g.write('%8.2f,%8.4f,%8.4f\n'%(float(p),RhoV_dict[p],V_dict[p]))
+        g.write('%8.2f,%8.4f,%8.4f,%8.4f\n'%(float(p),RhoV_dict[p],V_dict[p],rhoFree_dict[p]))
     g.close()
