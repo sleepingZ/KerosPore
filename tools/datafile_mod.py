@@ -54,15 +54,21 @@ def addAtomType(filename,type_num_old,type_num_new):
             index = lines.index(line)
             lines[index] = ' '.join([str(type_num_new),'atom','types'])+'\n'
             break
-    masslines = lines[mass_start:mass_end]
-    for line in masslines:
-        massnow = type_num_old+1
-        linenow = lines.index(line) + 1
-        if (linenow>mass_start) and (linenow<mass_end) and len(line.split())>1:
-            if (line.split()[0] >= str(type_num_old)) and (line.split()[0] <str(type_num_new)):
-                lines.insert(linenow,'%d 1.0'%massnow)
-                massnow += 1
+    masslines = lines[mass_start:mass_end-1]
+    massnow = type_num_old + 1
+    for j in range(len(masslines)):
+        line = masslines[j]
+        k = j+mass_start
+        if len(line.split())>1:
+#            if (line.split()[0] == str(type_num_old)) and (line.split()[0] <str(type_num_new)):
+#                lines.insert(linenow,'%d 1.0\n'%massnow)
+#                massnow += 1
+            if (line.split()[0] == str(type_num_old)):
+                insert_start_pos = k+1
+    for i in range(type_num_new-type_num_old):
+        lines.insert(insert_start_pos+i,'%d 1.0\n'%(massnow+i))
     f.close()
     g=open('data.dreiding','w')
     g.writelines(lines)
     g.close()
+    

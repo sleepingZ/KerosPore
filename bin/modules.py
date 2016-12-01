@@ -11,7 +11,6 @@ Created on Sun Nov 13 19:03:19 2016
     A series of adsorption simulations with a specific method at various pressures
 @author: sleepingz
 """
-import sys
 import numpy as np
 import matplotlib.pyplot as plt
 def NPT_cutter_sphere(m,proj_name,D,T,P):
@@ -19,8 +18,6 @@ def NPT_cutter_sphere(m,proj_name,D,T,P):
         D (nm): void diameter
         T (K): temperature, P (bar): pressure    
     '''
-    sys.path.append(m.config['keros_path'])
-    sys.path.append(m.config['recon_script_path'])
     m.Project(proj_name)
     nm2cm = 1e-7
     void = [D*nm2cm]*3
@@ -74,7 +71,6 @@ def Saturation(m,proj_name,datafile,stepRun=40000):
         datafile: datafile for the structure to be saturated
         stepRun: simulation # of steps for the saturation
     """
-    sys.path.append(m.config['ads_script_path'])
     import ads_pre
     import copy
     m.Project(proj_name)
@@ -97,7 +93,6 @@ def Ads_lj(m,proj_name,datafile,fluid,void_radius,T,P,ensemble_frame,\
         ensemble_frame: # of snapshots saved to the dump file
         exchange_id: (id of the MC exchange atoms) = (# of types in the datafile) +1
     '''
-    sys.path.append(m.config['ads_script_path'])
     import ads,ads_pre
     import copy,os
     m.Project(proj_name)
@@ -162,7 +157,6 @@ def Ads_ljbiM(m,proj_name,datafile,fluid1,fluid2,x1,void_radius,T,P,\
         ensemble_frame: # of snapshots saved to the dump file
         exchange_id: (id of the 1st type of MC exchange atoms) = (# of types in the datafile) +1
     '''
-    sys.path.append(m.config['ads_script_path'])
     import ads,ads_pre
     import copy,os
     m.Project(proj_name)
@@ -231,7 +225,6 @@ def Isotherm(m,proj_name,group_name,datafile,method,fluid,void_radius,\
         exchange_id: (id of the MC exchange atoms) = (# of types in the datafile) +1
         Pmin, Pmax and num decide the pressure values in the isotherm
     '''
-    sys.path.append(m.config['ads_script_path'])
     import ads_post
     import numpy as np
     P_seq = np.linspace(Pmin,Pmax,num=num,endpoint=True)
@@ -258,7 +251,6 @@ def DensityAccum(m,proj_name,accum_name,adsfile,ensemble_frame,equil_step,\
         --full: DensityAccum and Coordnum
         --partial: Coordnum only
     '''
-    sys.path.append(m.config['ads_script_path'])
     m.Project(proj_name)
     import ensembleDensity as eD
     
@@ -279,20 +271,17 @@ def IsothermAnalyze(m,proj_name,group_name,fluid,equil_step):
         fluid: fluid name
         equil_step: when step>equil_step the GCMC procedure is in equilibruim
     """
-    sys.path.append(m.config['ads_script_path'])
     m.Project(proj_name+'/%s'%group_name)
     import ads_post
     ads_post.writeAdsFile(m.config,fluid,'.',equil_step = equil_step)
 
 def VisualDensity(m,proj_name,case,phi=0.01):
-    sys.path.append(m.config['ads_script_path'])
     m.Project(proj_name)
     import ensembleDensity as eD
     D = eD.Density(m.config,path=case,mode='open')
     D.visualDensity(vis='yes',phi=phi)
     
 def VRhoSpectrum(m,proj_name,case,hist_mesh=100):
-    sys.path.append(m.config['ads_script_path'])
     m.Project(proj_name)
     import ensembleDensity as eD
     D = eD.Density(m.config,path=case,mode='open')
@@ -301,7 +290,6 @@ def VRhoSpectrum(m,proj_name,case,hist_mesh=100):
     D.V_rho_Spectrum()
 
 def Density1DRadial(m,proj_name,case,void_radius,mesh=100):
-    sys.path.append(m.config['ads_script_path'])
     m.Project(proj_name)
     import ensembleDensity as eD
     D = eD.Density(m.config,path=case,mode='open')
@@ -309,7 +297,6 @@ def Density1DRadial(m,proj_name,case,void_radius,mesh=100):
     print np.divide(D.radial_hist[1:],np.square(D.radial_r[1:]))
         
 def Ads_lj93Wall(m,proj_name,void_radius,nAtoms,fluid,T,energy=1.9,sigma=3.7):
-    sys.path.append(m.config['ads_script_path'])
     m.Project(proj_name)
     import ads
     fluid_info = ads.fluid_info[fluid]
@@ -326,7 +313,6 @@ def Ads_lj93Wall(m,proj_name,void_radius,nAtoms,fluid,T,energy=1.9,sigma=3.7):
 
 def AdsRhoFree(m,proj_name,void_radius,ads_group,fluid,T,energy=1.9,sigma=3.7,\
     hist_mesh = 100):
-    sys.path.append(m.config['ads_script_path'])
     m.Project(proj_name)
     import ads_post
     import ensembleDensity as eD
@@ -367,7 +353,6 @@ def IsothermDensityAccum(m,proj_name,ads_group,ensemble_frame,equil_step,\
                 
 def AdsRatio(m,proj_name,ads_group,mode='self',hist_mesh=100,bonus=0.2):
     import os
-    sys.path.append(m.config['ads_script_path'])
     import ensembleDensity as eD
     m.Project(proj_name)
     filenames = os.listdir(ads_group)
