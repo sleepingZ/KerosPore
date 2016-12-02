@@ -235,6 +235,19 @@ def Isotherm(m,proj_name,group_name,datafile,method,fluid,void_radius,\
     m.Project(proj_name)
     ads_post.adsGroup('.',group_name)
 
+def IsothermBiM(m,proj_name,group_name,datafile,method,fluid1,fluid2,\
+        x1,void_radius,T,\
+        ensemble_frame=500,exchange_id = 8,Pmin=0.5,Pmax=30.0,num=10):
+    import ads_post
+    import numpy as np
+    P_seq = np.linspace(Pmin,Pmax,num=num,endpoint=True)
+    for P in P_seq:
+        if method == 'ljbiM':
+            Ads_ljbiM(m,proj_name,datafile,fluid1,fluid2,x1,void_radius,T,P,ensemble_frame,\
+                exchange_id = exchange_id)
+    m.Project(proj_name)
+    ads_post.adsGroup('.',group_name)
+
 def DensityAccum(m,proj_name,accum_name,adsfile,ensemble_frame,equil_step,\
     void_radius,cutoff = 2.0,mesh = 50,exchange_id = 8,mode = 'full'):
     '''
@@ -275,12 +288,49 @@ def IsothermAnalyze(m,proj_name,group_name,fluid,equil_step):
     import ads_post
     ads_post.writeAdsFile(m.config,fluid,'.',equil_step = equil_step)
 
+def IsothermBiMAnalyze(m,proj_name,group_name,fluid1,fluid2,equil_step):
+    m.Project(proj_name+'/%s'%group_name)
+    import ads_post
+    ads_post.writeBiMAdsFile(m.config,fluid1,fluid2,'.',equil_step = equil_step)
+    
 def VisualDensity(m,proj_name,case,phi=0.01):
     m.Project(proj_name)
     import ensembleDensity as eD
     D = eD.Density(m.config,path=case,mode='open')
     D.visualDensity(vis='yes',phi=phi)
-    
+
+def VisualDensityBiM(m,proj_name,case1,case2,phi=0.01):
+    import os
+    import ensembleDensity as eD
+    m.Project(proj_name)
+    grid_seq = []
+    extent_seq = []
+    for case in [case1,case2]:
+        D=eD.Density(m.config,path=case,mode='open')
+        grid_seq.append(D.visualDensity(vis='no',phi=phi))
+        extent_seq.append((D.rxy_min,D.rxy_max,D.zmin,D.zmax))
+        os.chdir('..')
+    inf = 1e-3
+    for grid in grid_seq:
+        mask = np.ma.masked_less(grid,inf)
+        grid = mask.filled(fill_value=0.0)
+    vmax = max(np.max(grid_seq[0]),np.max(grid_seq[1]))
+    import matplotlib.cm as cm
+    plt.rc('font', family='serif')
+    plt.rc(('xtick','ytick'),labelsize=15)
+    plt.figure(figsize=(8,6))
+    plt.subplot(121)
+    plt.imshow(grid_seq[0].T,aspect='equal',origin='lower',\
+        cmap=cm.Reds,alpha = 1.0,vmax=vmax,\
+        extent=extent_seq[0])
+    plt.title(case1)
+    plt.subplot(122)
+    plt.imshow(grid_seq[1].T,aspect='equal',origin='lower',\
+        cmap=cm.Blues,alpha = 1.0,vmax=vmax,\
+        extent=extent_seq[1])
+    plt.title(case2)
+    plt.show()
+
 def VRhoSpectrum(m,proj_name,case,hist_mesh=100):
     m.Project(proj_name)
     import ensembleDensity as eD

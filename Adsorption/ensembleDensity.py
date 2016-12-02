@@ -345,7 +345,6 @@ class Density():
         import matplotlib.pyplot as plt
         plt.rc('font', family='serif')
         plt.rc(('xtick','ytick'),labelsize=15)
-        plt.figure(figsize=(8,6))
         plane = np.array(plane)
         rxy_max, z_max = tuple(np.max(plane,axis=0)[:2])
         rxy_min, z_min = tuple(np.min(plane,axis=0)[:2])
@@ -353,8 +352,13 @@ class Density():
         from scipy.interpolate import griddata
         grid_rho=griddata(plane[:,:2],plane[:,2],(grid_rxy,grid_z),method='cubic')
         if vis == 'no':
+            self.rxy_min=rxy_min
+            self.rxy_max=rxy_max
+            self.zmin=zmin
+            self.zmax=zmax
             return grid_rho
         else:
+            plt.figure(figsize=(8,6))
             plt.imshow(grid_rho.T,aspect='equal',\
                 extent=(rxy_min,rxy_max,z_min,z_max),origin='lower')
             plt.show()
