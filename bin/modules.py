@@ -389,18 +389,20 @@ def AdsRhoFree(m,proj_name,void_radius,ads_group,fluid,T,energy=1.9,sigma=3.7,\
         f.write('%8.2f,%8.4f\n'%(p_seq[i],D.RhoFree))   
     f.close()
     
-def IsothermDensityAccum(m,proj_name,ads_group,ensemble_frame,equil_step,\
-        void_radius,cutoff = 2.0,mesh = 50,exchange_id = 8):
+def IsothermDensityAccum(m,proj_name,ads_group,method,\
+        ensemble_frame,equil_step,\
+        void_radius,cutoff = 2.0,mesh = 50,exchange = [8]):
     import os
     m.Project(proj_name)
     filenames = os.listdir(ads_group)
     for name in filenames:
         if name.startswith('iso:') or name.startswith('iso%'):
             new_proj_name = '%s/%s/%s'%(proj_name,ads_group,name)
-            DensityAccum(m,new_proj_name,"Accum","ads_lj.lammpstrj",\
-                ensemble_frame,equil_step,void_radius,\
-                cutoff = cutoff,mesh=mesh,exchange_id=exchange_id,mode='full')
-                
+            for ID in exchange:
+                DensityAccum(m,new_proj_name,"AccumID%s"%ID,"ads_%s.lammpstrj"%method,\
+                    ensemble_frame,equil_step,void_radius,\
+                    cutoff = cutoff,mesh=mesh,exchange_id=ID,mode='full')
+
 def AdsRatio(m,proj_name,ads_group,mode='self',hist_mesh=100,bonus=0.2):
     import os
     import ensembleDensity as eD
