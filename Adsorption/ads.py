@@ -15,6 +15,18 @@ ads_default = {'fluid':'methane','atomMass':16.0,\
 
 fluid_info = {'methane':{'molMass':16.0,'atomEpsilon':0.29386,'atomSigma':3.723},\
     'co2':{'molMass':44.0,'atomEpsilon':0.46879,'atomSigma':3.720}}
+
+molecule_info = {'methane':{'natoms':5,'ntypes':2,'template':'CH4_OPLS',\
+    'atomMasses':[12.0,1.0],'atomEpsilons':[0.0660,0.0300],\
+    'atomSigmas':[3.50,2.50],\
+    'bondE':[340.0],'bondLengh':[1.09],\
+    'angleE':[33.0],'angleTheta':[107.80]},\
+    'co2':{'natoms':3,'ntypes':2,'template':'CO2_EPM2',\
+    'atomMasses':[12.0,16.0],'atomEpsilons':[0.0559,0.1600],\
+    'atomSigmas':[2.757,3.033],\
+    'bondE':[1028.51],'bondLengh':[1.149],\
+    'angleE':[55.97],'angleTheta':[180.00]}}
+
 from ctypes import *
 
 class P2mu:
