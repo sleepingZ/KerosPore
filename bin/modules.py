@@ -291,6 +291,10 @@ def Ads_molbiM(m,proj_name,datafile,fluid1,fluid2,x1,void_radius,T,P,\
     ads_dict['dumpEvery'] = gcmcFreq * 20
     ads_dict['thermoEvery'] = ads_dict['dumpEvery'] * 10 
     ads_dict['stepRun'] = ensemble_frame * ads_dict['dumpEvery']
+<<<<<<< HEAD
+=======
+    ads_dict['coulCut'] = 2.0 * ads_dict['poreRadius']
+>>>>>>> master
 
     N_est = 4./3*3.1416*void_radius**3
     vol_mol = (0.5*(f_lj_sig[0]+f_lj_sig[1]))**3
@@ -380,7 +384,7 @@ def DensityAccum(m,proj_name,accum_name,adsfile,ensemble_frame,equil_step,\
     import ensembleDensity as eD
     
     half_length = void_radius + 4.0
-    mesh = max(50,int(half_length/cutoff))
+    mesh = max(mesh,int(half_length/cutoff))
     
     D = eD.Density(m.config,path = accum_name,adsfile = adsfile)
     if mode == 'full':
@@ -498,7 +502,7 @@ def AdsRhoFree(m,proj_name,void_radius,ads_group,fluid,T,energy=1.9,sigma=3.7,\
         D.readCoordfile()
         D.evalHist(mesh=hist_mesh)
         D.V_rho_Spectrum(plot='no')
-        f.write('%8.2f,%8.4f\n'%(p_seq[i],D.RhoFree))   
+        f.write('%8.2f,%8.4f\n'%(p_seq[i],D.RhoAd))   
     f.close()
     
 def IsothermDensityAccum(m,proj_name,ads_group,method,\
@@ -556,3 +560,97 @@ def AdsRatio(m,proj_name,ads_group,mode='self',hist_mesh=100,bonus=0.2):
     for p in p_seq:
         g.write('%8.2f,%8.4f,%8.4f,%8.4f\n'%(float(p),RhoV_dict[p],V_dict[p],rhoFree_dict[p]))
     g.close()
+
+def AdsRatioLJ93(m,proj_name,ads_group,mode='self',hist_mesh=100,bonus=0.2):
+    import os
+    import ensembleDensity as eD
+    m.Project(proj_name)
+    filenames = os.listdir(ads_group+'/adsRatio')
+    V_dict,RhoV_dict = {},{}
+    rhoFree_dict = {}
+
+    if mode == 'file':
+        rhoFreefile = '%s/adsRatio/rho_free.data'%(ads_group)
+        f = open(rhoFreefile)
+        lines = f.readlines()
+        for line in lines:
+            p = line.strip().split(',')[0]
+            rF = float(line.strip().split(',')[1])
+            rhoFree_dict[p] = rF
+        f.close()
+    
+    for name in filenames:
+        m.Project(proj_name)
+        if name.startswith('VRho'):
+            press = name.split('_')[-1][:-3]
+            D = eD.Density(m.config,path='%s/adsRatio/%s'%(ads_group,name),\
+                mode='open')
+            D.readCoordfile()
+            D.evalHist(mesh=hist_mesh)
+            D.V_rho_Spectrum(plot='no')
+            if mode == 'file':
+                D.adsAnalysis(mode='file',rhoFreeRef=rhoFree_dict[press],bonus=bonus)
+            else:
+                D.adsAnalysis(mode='self',bonus=bonus)
+                rhoFree_dict[press] = D.RhoFree
+            RhoV_dict[press] = D.RhoV_ads
+            V_dict[press] = D.V_ads
+    m.Project('%s/%s'%(proj_name,ads_group))
+    p_seq = sorted(V_dict.keys(),key=lambda x:float(x))
+    g = open('adsRatioLJ93.data','w')
+    g.write('press(MPa), RhoV, V, RhoFree\n')
+    for p in p_seq:
+        g.write('%8.2f,%8.4f,%8.4f,%8.4f\n'%(float(p),RhoV_dict[p],V_dict[p],rhoFree_dict[p]))
+    g.close()    
+
+def VRhoSpectrumCompare(m,proj_name,ads_group,\
+        case,void_radius,fluid,T,P,lj93e=2.0,hist_mesh=100):
+    m.Project(proj_name)
+    import ensembleDensity as eD
+    import ads_post
+    ads_res_file = '%s/adsorption.data'%ads_group
+    res = ads_post.readAdsFile(ads_res_file)
+    N_P = {}
+    for r in res:
+        N_P[r['p']]=r['N'][0]
+    natoms = int(N_P[P])
+    D = eD.Density(m.config,path=ads_group+'/'+case+'/VRho:Accum',mode='open')
+    D.readCoordfile()
+    D.evalHist(mesh=hist_mesh)
+    D.V_rho_Spectrum(plot='no')
+    new_proj_name = '%s/%s/Ads_lj93_temp'%(proj_name,ads_group)
+    accum_name = 'accum_%.2fMPa_%s'%(P,lj93e)
+    try:
+        m.Project(new_proj_name)
+        DLJ = eD.Density(m.config,path='VRho:%s'%(accum_name),\
+            mode='open')
+    except:
+        Ads_lj93Wall(m,new_proj_name,void_radius,natoms,\
+                fluid,T,energy=lj93e)
+        DensityAccum(m,new_proj_name,accum_name,"dump.ensembles",\
+            100,200000,void_radius,exchange_id = 1)
+        DLJ = eD.Density(m.config,path='VRho:%s'%(accum_name),\
+            mode='open')
+    DLJ.readCoordfile()
+    DLJ.evalHist(mesh=hist_mesh)
+    
+    import matplotlib.pyplot as plt
+    plt.rc('font', family='serif')
+    plt.rc('legend',numpoints=1)
+    fig=plt.figure(figsize=(8,6))
+    mesh_data = (2.0*DLJ.mesh)**3
+    DLJ.data_hist = np.divide(DLJ.data_hist,mesh_data)
+    plt.plot(np.divide(DLJ.data_x,DLJ.frame),\
+        np.multiply(DLJ.data_hist,np.divide(D.data_x,D.frame)),'o-',\
+        label=r"$\varepsilon_w = %s$"%lj93e)
+    plt.xlabel(r'$\rho_E$',fontsize=20)
+    plt.ylabel(r'$V_F$',fontsize=20)       
+    plt.xlim(xmax=0.7)
+    plt.plot(np.divide(D.data_x,D.frame),np.multiply(D.data_hist,np.divide(D.data_x,D.frame)),\
+        'ko-',label="Kerogen Pore")
+    plt.legend()
+    print "LJ93 V:%.2f"%np.sum(DLJ.data_hist)
+    print "Kerogen V:%.2f"%np.sum(D.data_hist)
+    print "LJ93 N:%.2f"%np.sum(np.multiply(DLJ.data_hist,np.divide(DLJ.data_x,DLJ.frame)))
+    print "Kerogen N:%.2f"%np.sum(np.multiply(D.data_hist,np.divide(D.data_x,D.frame)))
+    fig.show()

@@ -178,7 +178,21 @@ class Density():
                     rho_free_candi.append(Rho[i])
         if len(rho_free_candi)==0:
             rho_free_candi.append(0.0)
+
+	rho_ad_candi = []
+	for i in range(1,len(Rho)-1):
+            if RhoV[i-1]>RhoV[i] and RhoV[i]<RhoV[i+1]:#include valley points
+                dRhoV = min(RhoV[i-1]-RhoV[i],RhoV[i+1]-RhoV[i])
+                if dRhoV/(RhoV[i]+0.0001)<0.1:#exclude spur points
+                    rho_ad_candi.append(Rho[i])
+        if len(rho_ad_candi)==0:
+            rho_ad_candi.append(rho_free_candi[0]*3.0)
+	rho_ad_candi = [r for r in rho_ad_candi if r>rho_free_candi[0]]
+	if len(rho_ad_candi)==0:
+            rho_ad_candi.append(rho_free_candi[0]*3.0)
+	rho_ad = rho_ad_candi[0]
         self.RhoFree = rho_free_candi[0]
+	self.RhoAd = rho_ad
         self.Rho = Rho
         self.V = V
         self.RhoV = RhoV
@@ -188,6 +202,10 @@ class Density():
         plt.xlabel(r'$\rho_E$',fontsize=20)
         plt.ylabel(r'amplitude',fontsize=20)
         if plot == 'yes':
+	    print "Rho_ad_candidates:"
+	    print rho_ad_candi
+	    print "Rho_free_candidates:"
+	    print rho_free_candi
             plt.show()
     
     def adsAnalysis(self,mode = 'self',rhoFreeRef = 0.0,\

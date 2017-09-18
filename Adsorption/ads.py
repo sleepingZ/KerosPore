@@ -107,3 +107,4 @@ class ads_biM_mol(adsorption):
     def __init__(self,config,ads_molbiM_dict):
         adsorption.__init__(self,config,ads_dict = ads_molbiM_dict,method = 'molbiM')
         self.script_mod()
+
