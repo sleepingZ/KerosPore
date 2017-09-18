@@ -291,7 +291,10 @@ def Ads_molbiM(m,proj_name,datafile,fluid1,fluid2,x1,void_radius,T,P,\
     ads_dict['dumpEvery'] = gcmcFreq * 20
     ads_dict['thermoEvery'] = ads_dict['dumpEvery'] * 10 
     ads_dict['stepRun'] = ensemble_frame * ads_dict['dumpEvery']
+<<<<<<< HEAD
+=======
     ads_dict['coulCut'] = 2.0 * ads_dict['poreRadius']
+>>>>>>> master
 
     N_est = 4./3*3.1416*void_radius**3
     vol_mol = (0.5*(f_lj_sig[0]+f_lj_sig[1]))**3

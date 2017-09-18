@@ -8,4 +8,6 @@ recon_script_path:../Recon
 ads_script_path:../Adsorption
 workspace:../workspace
 nist_path:../Fluid
+tools_path:../tools
 engine:mpirun -np 4 lmp_ubuntu
+
