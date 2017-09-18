@@ -57,6 +57,29 @@ def writeAdsFile(config,fluid,path,equil_step = 10000):
             (T,P,mu,N_ave,N_std))
     f.close()
 
+def writeBiMAdsFile(config,fluid1,fluid2,path,equil_step = 10000):
+    import os
+    dirs = os.listdir(path)
+    iso_dirs = [name for name in dirs if name.startswith('iso:') or name.startswith('iso%')]
+    iso_dirs = sorted(iso_dirs,key=lambda x:float(x.split('_')[4]))
+    from ads import P2mu
+    P2mu_ins = P2mu(config)
+    f = open('adsorption.data','w')
+    f.write("T(K)  p(MPa)  f1(MPa)  f2(MPa)  N1ave(1)  N1std(1)  N2ave(1)  N2std(1)\n")
+    for iso_path in iso_dirs:
+        name = iso_path.split('_')
+        N1_ave, N1_std = nmolAnalysis('%s/%s/nmol_%s.ave'%(path,iso_path,fluid1),equil_step)
+        N2_ave, N2_std = nmolAnalysis('%s/%s/nmol_%s.ave'%(path,iso_path,fluid2),equil_step)        
+        T = float(name[2])
+        P = float(name[4])
+        x1 = float(name[6])
+        fugacity = P2mu_ins.biMix_f(fluid1,fluid2,T,P,x1)
+        f1 = fugacity[0]/1000.0
+        f2 = fugacity[1]/1000.0
+        f.write("%8.5f,%8.5f,%8.5f,%8.5f,%8.5f,%8.5f,%8.5f,%8.5f\n"%\
+            (T,P,f1,f2,N1_ave,N1_std,N2_ave,N2_std))
+    f.close()
+
 def LangmuirFit(p,Nad):
     def residuals(t,q,p):
         pL,qL=t

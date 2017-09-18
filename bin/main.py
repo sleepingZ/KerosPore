@@ -21,6 +21,8 @@ class Main:
 	sys.path.append(self.config['keros_path'])
         sys.path.append(self.config['ads_script_path'])
         sys.path.append(self.config['recon_script_path'])
+        sys.path.append(self.config['nist_path'])
+        sys.path.append(self.config['tools_path'])
     
     def Project(self,proj_name):
         import os
