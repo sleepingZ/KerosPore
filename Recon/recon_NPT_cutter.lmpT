@@ -8,22 +8,17 @@ angle_style harmonic
 dihedral_style harmonic
 improper_style none 
 read_data $data$
-mass 7 16.0
-pair_coeff 1 1 0.0950 3.88  
-pair_coeff 2 2 0.0950 3.88  
-pair_coeff 3 3 0.0100 3.20  
-pair_coeff 4 4 0.1450 3.695
-pair_coeff 5 5 0.2150 3.51
-pair_coeff 6 6 0.2150 4.14
-pair_coeff 7 7 0.29386 3.723
+$pore_atom_parameter$
+pair_coeff $cutter_atom_ID$ $cutter_atom_ID$ $cutter_atom_epsl$ $cutter_atom_sig$
+mass $cutter_atom_ID$ $cutter_atom_mass$
 pair_modify mix geometric
 neighbor 5.0 multi
 read_dump cutter_atoms.lammpstrj 200000 x y z box no replace yes add yes
 reset_timestep 0
-group cutter type 7
+group cutter type $cutter_atom_ID$
 group mobile subtract all cutter
 delete_atoms overlap 0.5 all all mol yes
-neigh_modify every 2 delay 4 check yes one 5000 exclude type 7 7
+neigh_modify every 2 delay 4 check yes one 5000 exclude type $cutter_atom_ID$ $cutter_atom_ID$
 velocity all create 10 87287 loop geom
 compute 1 all pressure thermo_temp
 fix 1 mobile nve
